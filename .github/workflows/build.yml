@@ -15,17 +15,33 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - name: Fix project structure
+      - name: Clean and Recreate Project
         run: |
-          if [ -f lib/main.dart ]; then cp lib/main.dart /tmp/main.dart.bak; fi
-          if [ -f pubspec.yaml ]; then cp pubspec.yaml /tmp/pubspec.bak; fi
-          flutter create . --platforms=android --project-name esaale_sawab_tree --org com.esaale.tree --overwrite || flutter create .
-          if [ -f /tmp/main.dart.bak ]; then cp /tmp/main.dart.bak lib/main.dart; fi
-          flutter pub add image_picker
-      - name: Get packages
-        run: flutter pub get
+          rm -f pubspec.yaml
+          cat > pubspec.yaml << 'EOF'
+          name: esaale_sawab_tree
+          description: Esaale Sawab Tree App
+          publish_to: 'none'
+          version: 1.0.0+1
+          environment:
+            sdk: '>=3.0.0 <4.0.0'
+          dependencies:
+            flutter:
+              sdk: flutter
+            cupertino_icons: ^1.0.5
+            image_picker: ^1.1.2
+          dev_dependencies:
+            flutter_test:
+              sdk: flutter
+            flutter_lints: ^3.0.0
+          flutter:
+            uses-material-design: true
+          EOF
+          flutter clean
+          flutter create . --platforms=android --project-name esaale_sawab_tree --org com.esaale.tree --overwrite
+          flutter pub get
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
