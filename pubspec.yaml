@@ -1,16 +1,20 @@
-name: esaale_sawab_tree
-description: Esaale Sawab Family Tree App
+name: esaale_sawab_family_tree
+description: Remember Them With Dua
 publish_to: 'none'
 version: 1.0.0+1
-
 environment:
-  sdk: '>=3.2.0 <4.0.0'
-
+  sdk: '>=3.0.0 <4.0.0'
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.5
-  image_picker: ^1.1.2
-
+  cupertino_icons: ^1.0.8
+  image_picker: ^1.0.7
+  shared_preferences: ^2.2.2
+  connectivity_plus: ^6.0.3
+  path_provider: ^2.1.2
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
 flutter:
   uses-material-design: true
