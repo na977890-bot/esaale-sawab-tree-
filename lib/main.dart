@@ -1,232 +1,366 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
-void main() => runApp(EsaaleSawabApp());
+void main() => runApp(const InternetGate());
 
-class EsaaleSawabApp extends StatelessWidget {
+// ===== INTERNET GATE =====
+class InternetGate extends StatefulWidget {
+  const InternetGate({super.key});
+  @override
+  State<InternetGate> createState() => _InternetGateState();
+}
+class _InternetGateState extends State<InternetGate> {
+  bool hasInternet = true;
+  bool loading = true;
+  @override
+  void initState() {
+    super.initState();
+    _check();
+    Connectivity().onConnectivityChanged.listen((_) => _check());
+  }
+  Future<void> _check() async {
+    var r = await Connectivity().checkConnectivity();
+    setState(() {
+      hasInternet = r != ConnectivityResult.none;
+      loading = false;
+    });
+  }
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(debugShowCheckedModeBanner: false, home: SplashScreen());
-  }
-}
-
-const green = Color(0xFF0B6E4F);
-const lightGreen = Color(0xFFE8F5E9);
-
-Future<bool> checkInternet() async {
-  try {
-    final result = await InternetAddress.lookup('google.com').timeout(Duration(seconds: 5));
-    return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-  } catch (_) {
-    return false;
-  }
-}
-
-Widget noInternetWidget(VoidCallback onRetry) => Container(color: Colors.white, child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-  Icon(Icons.wifi_off, size: 80, color: Colors.red),
-  SizedBox(height: 15),
-  Text('No Internet Connection', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.red)),
-  SizedBox(height: 8),
-  Text('Please check your internet connection', style: TextStyle(color: Colors.black54)),
-  Text('Net ke bagair app nahi chalegi', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold)),
-  SizedBox(height: 20),
-  ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: green), onPressed: onRetry, child: Text('Retry - Dobara Check Karo', style: TextStyle(color: Colors.white)))
-])));
-
-String selectedLang = 'Urdu - اردو';
-Map<String, Map<String,String>> tr = {
-  'Urdu - اردو': {'add':'Marhoom ka Naam - Bada Box','rishta':'Rishta - Walid Walida Bhai Behen Beta Beti','year':'Wafat ka Saal','save':'Save Karo','home':"Today's Reminder",'recite':'Recite Now  >','gallery':'Gallery se pic upload hogi (tap karo)'},
-  'English': {'add':'Deceased Name - Big Box','rishta':'Relation - Father Mother Brother Sister','year':'Year of Death','save':'Save','home':"Today's Reminder",'recite':'Recite Now  >','gallery':'Upload pic from gallery (tap)'},
-  'العربية - Arabic': {'add':'اسم المتوفى','rishta':'القرابة','year':'سنة الوفاة','save':'حفظ','home':'تذكير اليوم','recite':'اقرأ الآن','gallery':'تحميل الصورة'},
-  'Türkçe - Turkish': {'add':'Merhumun Adı','rishta':'Akrabalık','year':'Vefat Yılı','save':'Kaydet','home':'Bugünkü Hatırlatma','recite':'Şimdi Oku','gallery':'Galeriden yükle'},
-  'Indonesia - Indonesian': {'add':'Nama Almarhum','rishta':'Hubungan','year':'Tahun Wafat','save':'Simpan','home':'Pengingat Hari Ini','recite':'Baca Sekarang','gallery':'Upload dari galeri'},
-  'Melayu - Malay': {'add':'Nama Arwah','rishta':'Hubungan','year':'Tahun Meninggal','save':'Simpan','home':'Peringatan Hari Ini','recite':'Baca Sekarang','gallery':'Muat naik dari galeri'},
-  'বাংলা - Bengali': {'add':'মৃতের নাম','rishta':'সম্পর্ক','year':'মৃত্যুর সাল','save':'সংরক্ষণ','home':'আজকের রিমাইন্ডার','recite':'এখন পড়ুন','gallery':'গ্যালারি থেকে আপলোড'},
-  'Français - French': {'add':'Nom du défunt','rishta':'Relation','year':'Année de décès','save':'Sauvegarder','home':"Rappel d'aujourd'hui",'recite':'Réciter Maintenant','gallery':'Télécharger depuis la galerie'},
-  'فارسی - Persian': {'add':'نام متوفی','rishta':'نسبت','year':'سال وفات','save':'ذخیره','home':'یادآوری امروز','recite':'اکنون تلاوت کنید','gallery':'آپلود از گالری'},
-  'हिंदी - Hindi': {'add':'मरहूम का नाम','rishta':'रिश्ता','year':'वफात का साल','save':'सेव करें','home':'आज की याद','recite':'अभी पढ़ें','gallery':'गैलरी से अपलोड करें'},
-};
-
-Widget adBanner() => Container(height: 50, margin: EdgeInsets.all(8), decoration: BoxDecoration(color: lightGreen, border: Border.all(color: green), borderRadius: BorderRadius.circular(8)), child: Center(child: Text('320x50 Banner Ad - ADMOB ONLINE ONLY', style: TextStyle(fontSize: 11, color: green, fontWeight: FontWeight.bold))));
-
-class SplashScreen extends StatefulWidget{ @override _SplashScreenState createState()=> _SplashScreenState(); }
-class _SplashScreenState extends State<SplashScreen>{
-  bool hasNet=true; bool checking=true;
-  @override void initState(){ super.initState(); check(); }
-  void check() async { bool net=await checkInternet(); setState((){ hasNet=net; checking=false; }); if(net){ Future.delayed(Duration(seconds: 2), ()=> Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=> LanguageScreen()))); } }
-  @override Widget build(BuildContext context){
-    if(checking) return Scaffold(body: Center(child: CircularProgressIndicator(color: green)));
-    if(!hasNet) return Scaffold(body: noInternetWidget(()=> { setState(()=> checking=true), check() }));
-    return Scaffold(backgroundColor: Colors.white,
-      body: Column(children: [
-        Expanded(child: Stack(children: [
-          Positioned(top: 40, left: 20, child: Icon(Icons.celebration, color: green, size: 28)),
-          Positioned(top: 40, right: 20, child: Icon(Icons.celebration, color: green, size: 28)),
-          Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Stack(alignment: Alignment.center, children: [
-              Icon(Icons.circle_outlined, size: 140, color: green),
-              Icon(Icons.park, size: 100, color: green),
-              Positioned(bottom: 10, child: Icon(Icons.mosque, size: 20, color: green))
+    if (loading) return const MaterialApp(home: Scaffold(body: Center(child: CircularProgressIndicator())));
+    if (!hasInternet) {
+      return MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.wifi_off, size: 90, color: Colors.red),
+              const SizedBox(height: 20),
+              const Text('Check your internet connection', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('Internet on karo tab app open hogi'),
+              const SizedBox(height: 20),
+              ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0B6B3A)), onPressed: _check, child: const Text('Retry', style: TextStyle(color: Colors.white))),
             ]),
-            SizedBox(height: 10),
-            Text('Esaale Sawab\nFamily Tree', textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: green)),
-            SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [Container(height: 1, width: 30, color: green), Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.mosque, color: green, size: 18)), Container(height: 1, width: 30, color: green)]),
-            SizedBox(height: 8),
-            Text('- Remember Them With Dua -', style: TextStyle(color: green, fontStyle: FontStyle.italic)),
-          ]))
-        ])),
-        Opacity(opacity: 0.2, child: Icon(Icons.mosque, size: 100, color: green)),
-        Container(height: 60, width: double.infinity, color: green)
-      ]),
-    );
+          ),
+        ),
+      );
+    }
+    return const EsaaleApp();
+  }
+}
+// ===== LANGUAGE SERVICE - 12 LANGUAGES =====
+class LangService {
+  static String current = 'Urdu';
+  static const List<String> all = ['Urdu','English','Indonesia','Arabic','Turkish','Malay','Bengali','French','Hindi','Pashto','Persian','German'];
+  static final Map<String, Map<String,String>> dict = {
+    'Urdu': {'choose':'Apni Zuban Chuno','todayRem':'Aaj ka Reminder','for':'Aaj','pending':'1 Fatiha pending','reciteNow':'Recite Now','addMarhoom':'Add Marhoom','marhoomName':'Marhoom ka Naam','rishta':'Rishta','wafat':'Wafat ka Saal','save':'Save Karo','familyTree':'Family Tree','sawabCounter':'Sawab Counter','youRecite':'You recite, app counts','notifSet':'Notification Settings','dailyTime':'Daily Reminder Time','chooseMembers':'Choose members','lang':'Language','sound':'Sound','fatiha':'Surah Fatiha','ikhlas':'Surah Ikhlas','durood':'Durood Sharif','mayAccept':'May Allah accept our good deeds (Ameen)','mayForgive':'May Allah forgive them and grant them Jannah','everyRecite':'Every recitation reaches them InshaAllah','home':'Home','tree':'Tree','settings':'Settings','esaale':'Esaale Sawab','you':'You'},
+    'English': {'choose':'Choose Your Language','todayRem':"Today's Reminder",'for':'Today for','pending':'1 Fatiha pending','reciteNow':'Recite Now','addMarhoom':'Add Marhoom','marhoomName':'Marhoom ka Naam','rishta':'Rishta','wafat':'Wafat ka Saal','save':'Save Karo','familyTree':'Family Tree','sawabCounter':'Sawab Counter','youRecite':'You recite, app counts','notifSet':'Notification Settings','dailyTime':'Daily Reminder Time','chooseMembers':'Choose members','lang':'Language','sound':'Sound','fatiha':'Surah Fatiha','ikhlas':'Surah Ikhlas','durood':'Durood Sharif','mayAccept':'May Allah accept our good deeds (Ameen)','mayForgive':'May Allah forgive them and grant them Jannah','everyRecite':"Every recitation reaches them Insha'Allah",'home':'Home','tree':'Tree','settings':'Settings','esaale':'Esaale Sawab','you':'You'},
+    'Indonesia': {'choose':'Pilih Bahasa Anda','todayRem':'Pengingat Hari Ini','for':'Hari ini untuk','pending':'1 Fatiha tertunda','reciteNow':'Baca Sekarang','addMarhoom':'Tambah Marhoom','marhoomName':'Nama Marhoom','rishta':'Hubungan','wafat':'Tahun Wafat','save':'Simpan','familyTree':'Pohon Keluarga','sawabCounter':'Penghitung Sawab','youRecite':'Anda membaca, aplikasi menghitung','notifSet':'Pengaturan Notifikasi','dailyTime':'Waktu Pengingat Harian','chooseMembers':'Pilih anggota','lang':'Bahasa','sound':'Suara','fatiha':'Surah Fatiha','ikhlas':'Surah Ikhlas','durood':'Durood Sharif','mayAccept':'Semoga Allah menerima amal baik kita','mayForgive':'Semoga Allah mengampuni mereka','everyRecite':'Setiap bacaan sampai kepada mereka','home':'Beranda','tree':'Pohon','settings':'Pengaturan','esaale':'Esaale Sawab','you':'Anda'},
+  };
+  static String tr(String k){
+    var map = dict[current] ?? dict['English']!;
+    return map[k] ?? dict['English']![k] ?? k;
+  }
+  static Future<void> load() async {
+    var sp = await SharedPreferences.getInstance();
+    current = sp.getString('lang') ?? 'Urdu';
+  }
+  static Future<void> save(String l) async {
+    current = l;
+    var sp = await SharedPreferences.getInstance();
+    await sp.setString('lang', l);
   }
 }
 
-class LanguageScreen extends StatefulWidget{ @override _LanguageScreenState createState()=> _LanguageScreenState(); }
-class _LanguageScreenState extends State<LanguageScreen>{
-  final langs = ['Urdu - اردو','English','العربية - Arabic','Türkçe - Turkish','Indonesia - Indonesian','Melayu - Malay','বাংলা - Bengali','Français - French','فارسی - Persian','हिंदी - Hindi'];
-  bool hasNet=true; bool checking=true;
-  @override void initState(){ super.initState(); check(); }
-  void check() async { bool net=await checkInternet(); setState((){ hasNet=net; checking=false; }); }
-  @override Widget build(BuildContext context){
-    if(checking) return Scaffold(body: Center(child: CircularProgressIndicator(color: green)));
-    if(!hasNet) return Scaffold(body: noInternetWidget(()=> { setState(()=> checking=true), check() }));
-    return Scaffold(backgroundColor: Colors.white,
-      body: Column(children: [
-        Container(height: 160, width: double.infinity, decoration: BoxDecoration(color: green, borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30))), child: Stack(children: [
-          Positioned(top: 20, left: 0, right: 0, child: Icon(Icons.mosque, size: 120, color: Colors.white.withOpacity(0.2))),
-          Center(child: Icon(Icons.nightlight_round, color: Colors.white, size: 40)),
-        ])),
-        SizedBox(height: 20),
-        Text('Choose Your\nLanguage', textAlign: TextAlign.center, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: green)),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [Container(height: 1, width: 60, color: green), Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.mosque, color: green, size: 16)), Container(height: 1, width: 60, color: green)]),
-        SizedBox(height: 20),
-        Expanded(child: ListView(children: langs.map((l)=> Container(margin: EdgeInsets.symmetric(horizontal: 32, vertical: 6), width: double.infinity, height: 50, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: (){ setState(()=> selectedLang=l); Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=> MainTabs())); }, child: Text(l, style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold))))).toList())),
-        adBanner()
-      ]),
-    );
+// ===== DATA MODELS =====
+class Marhoom {
+  String name, rishta, wafat, imagePath;
+  Marhoom({required this.name, required this.rishta, required this.wafat, required this.imagePath});
+  Map toJson() => {'name':name,'rishta':rishta,'wafat':wafat,'imagePath':imagePath};
+  static Marhoom fromJson(Map m) => Marhoom(name: m['name'], rishta: m['rishta'], wafat: m['wafat'], imagePath: m['imagePath']);
+}
+class Storage {
+  static List<Marhoom> family = [];
+  static Map<String,int> counts = {'fatiha':12,'ikhlas':20,'durood':0};
+  static String reminderTime = '9:00 AM';
+  static List<String> selectedMembers = [];
+  static bool soundOn = true;
+    static Future<void> loadAll() async {
+    var sp = await SharedPreferences.getInstance();
+    var famStr = sp.getString('family');
+    if(famStr!=null){ var list=jsonDecode(famStr) as List; family=list.map((e)=>Marhoom.fromJson(e)).toList(); }
+    if(family.isEmpty){ family=[Marhoom(name:'Abu Jaan',rishta:'Walid',wafat:'2020',imagePath:''),Marhoom(name:'Ammi Jaan',rishta:'Walida',wafat:'2022',imagePath:'')]; }
+    counts['fatiha']=sp.getInt('c_fatiha')??12;
+    counts['ikhlas']=sp.getInt('c_ikhlas')??20;
+    counts['durood']=sp.getInt('c_durood')??0;
+    reminderTime=sp.getString('remTime')??'9:00 AM';
+    selectedMembers=sp.getStringList('selMembers')??['Abu Jaan','Ammi Jaan','You'];
+    soundOn=sp.getBool('sound')??true;
+  }
+  static Future<void> saveFamily() async { var sp=await SharedPreferences.getInstance(); await sp.setString('family', jsonEncode(family.map((e)=>e.toJson()).toList())); await sp.setStringList('selMembers', selectedMembers); }
+  static Future<void> saveCounts() async { var sp=await SharedPreferences.getInstance(); await sp.setInt('c_fatiha', counts['fatiha']!); await sp.setInt('c_ikhlas', counts['ikhlas']!); await sp.setInt('c_durood', counts['durood']!); }
+  static Future<void> saveSettings() async { var sp=await SharedPreferences.getInstance(); await sp.setString('remTime', reminderTime); await sp.setBool('sound', soundOn); await sp.setStringList('selMembers', selectedMembers); }
+}
+
+// ===== MAIN APP =====
+class EsaaleApp extends StatefulWidget {
+  const EsaaleApp({super.key});
+  @override
+  State<EsaaleApp> createState() => _EsaaleAppState();
+}
+class _EsaaleAppState extends State<EsaaleApp> {
+  bool ready=false;
+  @override
+  void initState(){ super.initState(); _init(); }
+  Future<void> _init() async { await LangService.load(); await Storage.loadAll(); setState(()=>ready=true); }
+  @override
+  Widget build(BuildContext context){
+    if(!ready) return const MaterialApp(home: Scaffold(body: Center(child: CircularProgressIndicator())));
+    return MaterialApp(debugShowCheckedModeBanner: false, theme: ThemeData(primaryColor: Color(0xFF0B6B3A), scaffoldBackgroundColor: Color(0xFFF6FFFA)), home: const SplashPage());
   }
 }
 
-class MainTabs extends StatefulWidget{ @override _MainTabsState createState()=> _MainTabsState(); }
-class _MainTabsState extends State<MainTabs>{
-  int tab=0; 
-  List<Map<String,dynamic>> members=[{'name':'Abu Jaan','rishta':'Abu Jaan','pic': null},{'name':'Ammi Jaan','rishta':'Ammi Jaan','pic': null}]; 
-  int fatiha=12, ikhlas=20, durood=0;
-  bool hasNet=true; bool checking=true;
-  @override void initState(){ super.initState(); check(); }
-  void check() async { bool net=await checkInternet(); setState((){ hasNet=net; checking=false; }); }
+class AdBanner extends StatelessWidget {
+  const AdBanner({super.key});
+  @override
+  Widget build(BuildContext context){
+    return Container(height: 50, width: double.infinity, color: Color(0xFFE0E0E0), child: Center(child: Text('320x50 Ad Banner', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.bold))));
+  }
+}
 
-  @override Widget build(BuildContext context){
-    if(checking) return Scaffold(body: Center(child: CircularProgressIndicator(color: green)));
-    if(!hasNet) return Scaffold(appBar: AppBar(backgroundColor: green, title: Text('No Internet')), body: noInternetWidget(()=> { setState(()=> checking=true), check() }));
+class SplashPage extends StatelessWidget {
+  const SplashPage({super.key});
+  @override
+  Widget build(BuildContext context){
     return Scaffold(
-      appBar: AppBar(backgroundColor: green, title: Text([ 'Esaale Sawab', 'Family Tree', 'Sawab Counter', 'Notification Settings'][tab], style: TextStyle(color: Colors.white)), iconTheme: IconThemeData(color: Colors.white)),
-      body: Column(children: [Expanded(child: [homePage(), familyTreePage(), sawabCounterPage(), notificationSettingsPage()][tab]), adBanner()]),
-      bottomNavigationBar: BottomNavigationBar(currentIndex: tab>2?2:tab, selectedItemColor: green, onTap: (i){ if(i==2) setState(()=> tab=2); else setState(()=> tab=i); }, items: [BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'), BottomNavigationBarItem(icon: Icon(Icons.park), label: 'Tree'), BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings')]),
-      floatingActionButton: tab!=2 ? FloatingActionButton(backgroundColor: green, child: Icon(Icons.add), onPressed: ()=> addMarhoomDialog()) : null,
+      body: Container(
+        decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF0B6B3A), Color(0xFF0E8A4A)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+        child: Stack(
+          children: [
+            Positioned(top: 50, left: 20, child: Icon(Icons.light, size: 40, color: Colors.white24)),
+            Positioned(top: 50, right: 20, child: Icon(Icons.light, size: 40, color: Colors.white24)),
+            Positioned(bottom: 100, left: 0, right: 0, child: Icon(Icons.mosque, size: 120, color: Colors.white12)),
+            Column(children: [
+              SizedBox(height: 70),
+              Stack(alignment: Alignment.center, children: [
+                Container(width: 200, height: 200, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 6))),
+                Icon(Icons.park, size: 140, color: Colors.white),
+              ]),
+              SizedBox(height: 20),
+              Text('Esaale Sawab\nFamily Tree', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold, height: 1.1)),
+              SizedBox(height: 12),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [Container(width: 30, height: 2, color: Colors.white54), Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Icon(Icons.mosque, color: Colors.white70, size: 20)), Container(width: 30, height: 2, color: Colors.white54)]),
+              SizedBox(height: 10),
+              Text('- Remember Them With Dua -', style: TextStyle(color: Colors.white70, fontSize: 16, fontStyle: FontStyle.italic)),
+              Spacer(),
+              Padding(padding: EdgeInsets.all(20), child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Color(0xFF0B6B3A), minimumSize: Size(double.infinity, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))), onPressed: ()=>Navigator.push(context, MaterialPageRoute(builder: (_)=>const LanguagePage())), child: Text('Start / Shuru Karein', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)))),
+              SizedBox(height: 30),
+            ])
+          ],
+        ),
+      ),
     );
-  }
-
-  Widget homePage()=> ListView(padding: EdgeInsets.all(16), children: [
-    Card(color: lightGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), child: Padding(padding: EdgeInsets.all(16), child: Column(children: [
-      Row(children: [Icon(Icons.notifications, color: green), SizedBox(width: 5), Text(tr[selectedLang]!['home']!, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))]),
-      SizedBox(height: 8),
-      Text(members.isNotEmpty ? "Today for ${members[0]['name']}\n- 1 Fatiha pending" : "No member", textAlign: TextAlign.center),
-      SizedBox(height: 10),
-      SizedBox(width: double.infinity, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))), onPressed: ()=> setState(()=> tab=2), child: Text(tr[selectedLang]!['recite']!, style: TextStyle(color: Colors.white))))
-    ]))),
-    SizedBox(height: 20),
-    Icon(Icons.park, size: 120, color: green),
-    Center(child: Text('May Allah accept\nour good deeds (Ameen)', textAlign: TextAlign.center, style: TextStyle(color: green, fontStyle: FontStyle.italic))),
-    SizedBox(height: 20),
-    adBanner(),
-  ]);
-
-  Widget familyTreePage()=> ListView(padding: EdgeInsets.all(16), children: [
-    Text('Family Tree - Jitni Pics Lagao Ge Tree Banta Jayega', style: TextStyle(color: green, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-    SizedBox(height: 20),
-    Wrap(spacing: 15, runSpacing: 15, alignment: WrapAlignment.center, children: members.map((m)=> Column(children: [
-      Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: green, width: 3)), child: m['pic']!=null ? CircleAvatar(radius: 35, backgroundImage: FileImage(File(m['pic'] as String))) : CircleAvatar(radius: 35, backgroundColor: lightGreen, child: Icon(Icons.person, size: 35))),
-      SizedBox(height: 5),
-      Text(m['name'].toString(), style: TextStyle(fontWeight: FontWeight.bold)),
-    ])).toList()),
-    SizedBox(height: 20),
-    Center(child: CustomPaint(size: Size(200, 80), painter: TreeBranchPainter())),
-    CircleAvatar(radius: 30, backgroundColor: lightGreen, child: Icon(Icons.person, size: 30)),
-    Center(child: Text('You', style: TextStyle(fontWeight: FontWeight.bold))),
-    SizedBox(height: 20),
-    Center(child: Text('May Allah forgive them\nand grant them Jannah', textAlign: TextAlign.center, style: TextStyle(color: green, fontStyle: FontStyle.italic))),
-    adBanner(),
-  ]);
-
-  Widget sawabCounterPage()=> ListView(padding: EdgeInsets.all(16), children: [
-    Center(child: Text('You recite, app counts', style: TextStyle(color: green, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic))),
-    SizedBox(height: 15),
-    Card(child: ListTile(leading: Icon(Icons.menu_book, size: 40, color: green), title: Text('Surah Fatiha'), subtitle: Text('$fatiha', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)), trailing: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: green), onPressed: ()=> setState(()=> fatiha++), child: Text('+1', style: TextStyle(color: Colors.white))))),
-    adBanner(),
-    Card(child: ListTile(leading: Icon(Icons.mosque, size: 40, color: green), title: Text('Surah Ikhlas'), subtitle: Text('$ikhlas', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)), trailing: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: green), onPressed: ()=> setState(()=> ikhlas++), child: Text('+1', style: TextStyle(color: Colors.white))))),
-    Card(child: ListTile(leading: Icon(Icons.circle_outlined, size: 40, color: green), title: Text('Durood Sharif'), subtitle: Text('$durood', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)), trailing: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: green), onPressed: ()=> setState(()=> durood++), child: Text('+1', style: TextStyle(color: Colors.white))))),
-    SizedBox(height: 10),
-    Center(child: Text('Every recitation\nreaches them Insha\'Allah', textAlign: TextAlign.center, style: TextStyle(color: green))),
-  ]);
-
-  Widget notificationSettingsPage()=> ListView(padding: EdgeInsets.all(16), children: [
-    ListTile(leading: Icon(Icons.access_time, color: green, size: 30), title: Text('Daily Reminder Time'), subtitle: Text('9:00 AM'), trailing: Icon(Icons.arrow_forward_ios, size: 16), onTap: (){}),
-    Divider(),
-    ListTile(leading: Icon(Icons.group, color: green, size: 30), title: Text('Choose members'), subtitle: Text('${members.length} selected'), trailing: Icon(Icons.arrow_forward_ios, size: 16), onTap: (){}),
-    Divider(),
-    ListTile(leading: Icon(Icons.language, color: green, size: 30), title: Text('Language: $selectedLang'), subtitle: Wrap(spacing: 5, children: ['Urdu','English','Arabic','Turkish','Indonesia','Malay','Bengali','French','Persian','Hindi'].map((e)=> Chip(label: Text(e, style: TextStyle(fontSize: 10)), backgroundColor: e=='Urdu'?green:lightGreen)).toList())),
-    Divider(),
-    SwitchListTile(activeColor: green, title: Text('Sound'), secondary: Icon(Icons.volume_up, color: green), value: true, onChanged: (v){}),
-    adBanner(),
-    Card(color: lightGreen, child: Padding(padding: EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [Icon(Icons.park, color: green, size: 18), SizedBox(width: 5), Text('Esaale Sawab • now', style: TextStyle(fontWeight: FontWeight.bold))]),
-      SizedBox(height: 5),
-      Text('Aaj ${members.isNotEmpty?members[0]['name']:'Abu Jaan'} ke liye 1 Fatiha parh lete hain? 🤲'),
-      SizedBox(height: 8),
-      LinearProgressIndicator(value: 1, color: green),
-      SizedBox(height: 5),
-      Center(child: Text('1/1 Fatiha Aaj')),
-      SizedBox(height: 8),
-      SizedBox(width: double.infinity, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: green), onPressed: ()=> setState(()=> tab=0), child: Text('Fatiha Parh Li ✓', style: TextStyle(color: Colors.white))))
-    ])))
-  ]);
-
-  void addMarhoomDialog(){
-    final nameC=TextEditingController(); final yearC=TextEditingController(); String sel='Abu Jaan'; String? tempPicPath; final ImagePicker picker = ImagePicker();
-    List<String> rishtas=['Abu Jaan','Ammi Jaan','Bhai Jaan','Behen','Beta','Beti','Bahu','Dada Jaan','Dadi Jaan','Nana Jaan','Nani Jaan','Chacha','Chachi','Mama','Mami','Sasur','Saas','Damad','Pota','Poti','Nawasa','Nawasi','Dost','Ustad','Other'];
-    showModalBottomSheet(context: context, isScrollControlled: true, builder: (c)=> StatefulBuilder(builder: (ctx,setM)=> Padding(padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left:16, right:16, top:16), child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      GestureDetector(onTap: () async {
-        final XFile? img = await picker.pickImage(source: ImageSource.gallery);
-        if(img!=null){ setM(()=> tempPicPath = img.path); }
-      }, child: Stack(children: [
-        tempPicPath!=null ? CircleAvatar(radius: 50, backgroundImage: FileImage(File(tempPicPath!))) : CircleAvatar(radius: 50, backgroundColor: lightGreen, child: Icon(Icons.person, size: 50)),
-        Positioned(bottom: 0, right: 0, child: CircleAvatar(backgroundColor: green, radius: 15, child: Icon(Icons.camera_alt, color: Colors.white, size: 18)))
-      ])),
-      SizedBox(height: 5),
-      Text(tr[selectedLang]!['gallery']!, style: TextStyle(fontSize: 12, color: green, fontWeight: FontWeight.bold)),
-      SizedBox(height: 15),
-      TextField(controller: nameC, decoration: InputDecoration(labelText: tr[selectedLang]!['add']!, border: OutlineInputBorder(), prefixIcon: Icon(Icons.person))),
-      SizedBox(height: 10),
-      DropdownButtonFormField(value: sel, decoration: InputDecoration(labelText: tr[selectedLang]!['rishta']!, border: OutlineInputBorder(), prefixIcon: Icon(Icons.group)), items: rishtas.map((e)=> DropdownMenuItem(value:e, child: Text(e))).toList(), onChanged: (v)=> setM(()=> sel=v!)),
-      SizedBox(height: 10),
-      TextField(controller: yearC, decoration: InputDecoration(labelText: tr[selectedLang]!['year']!, border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_today))),
-      SizedBox(height: 15),
-      SizedBox(width: double.infinity, height: 50, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: green), onPressed: (){ if(nameC.text.isNotEmpty){ setState(()=> members.add({'name':nameC.text,'rishta':sel,'pic': tempPicPath})); Navigator.pop(context);} }, child: Text(tr[selectedLang]!['save']!, style: TextStyle(color: Colors.white, fontSize: 16)))),
-      adBanner()
-    ]))))));
   }
 }
 
-class TreeBranchPainter extends CustomPainter{
-  @override void paint(Canvas canvas, Size size){
-    final p=Paint()..color=green..strokeWidth=2..style=PaintingStyle.stroke;
-    canvas.drawLine(Offset(size.width/2, 0), Offset(size.width/2, size.height), p);
-    canvas.drawLine(Offset(size.width/2, 0), Offset(0, size.height/2), p);
-    canvas.drawLine(Offset(size.width/2, 0), Offset(size.width, size.height/2), p);
+class LanguagePage extends StatefulWidget {
+  const LanguagePage({super.key});
+  @override
+  State<LanguagePage> createState() => _LanguagePageState();
+}
+class _LanguagePageState extends State<LanguagePage> {
+  @override
+  Widget
+        AdBanner(),
+        Padding(padding: EdgeInsets.all(16), child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0B6B3A), minimumSize: Size(double.infinity, 50)), onPressed: ()=>Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>const MainNav())), child: Text('Continue', style: TextStyle(color: Colors.white, fontSize: 18)))),
+      ]),
+    );
   }
-  @override bool shouldRepaint(covariant CustomPainter oldDelegate)=> false;
+}
+
+class MainNav extends StatefulWidget {
+  const MainNav({super.key});
+  @override
+  State<MainNav> createState() => _MainNavState();
+}
+class _MainNavState extends State<MainNav> {
+  int idx=0;
+  final pages=[HomePage(), FamilyTreePage(), SettingsPage()];
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(
+      body: pages[idx],
+      bottomNavigationBar: BottomNavigationBar(currentIndex: idx, selectedItemColor: Color(0xFF0B6B3A), unselectedItemColor: Colors.grey, onTap: (i)=>setState(()=>idx=i), type: BottomNavigationBarType.fixed, items: [BottomNavigationBarItem(icon: Icon(Icons.home), label: LangService.tr('home')), BottomNavigationBarItem(icon: Icon(Icons.park), label: LangService.tr('tree')), BottomNavigationBarItem(icon: Icon(Icons.settings), label: LangService.tr('settings'))]),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(
+      appBar: AppBar(title: Row(children: [Text(LangService.tr('esaale')), SizedBox(width: 8), Icon(Icons.mosque, size: 20)]), backgroundColor: Color(0xFF0B6B3A), foregroundColor: Colors.white),
+      body: ListView(padding: EdgeInsets.all(16), children: [
+        Container(padding: EdgeInsets.all(16), decoration: BoxDecoration(color: Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(16), border: Border.all(color: Color(0xFF0B6B3A))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [Icon(Icons.notifications_active, color: Color(0xFF0B6B3A)), SizedBox(width: 8), Text(LangService.tr('todayRem'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))]),
+          SizedBox(height: 8),
+          Text('${LangService.tr('for')} ${Storage.family.isNotEmpty?Storage.family[0].name:'Abu Jaan'} - ${LangService.tr('pending')}'),
+          SizedBox(height: 12),
+          ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0B6B3A)), onPressed: ()=>Navigator.push(context, MaterialPageRoute(builder: (_)=>SawabCounterPage())), child: Row(mainAxisSize: MainAxisSize.min, children: [Text(LangService.tr('reciteNow'), style: TextStyle(color: Colors.white)), Icon(Icons.arrow_forward, color: Colors.white)])),
+        ])),
+        SizedBox(height: 20),
+        Center(child: Icon(Icons.park, size: 160, color: Color(0xFF0B6B3A))),
+        SizedBox(height: 10),
+        Center(child: Text(LangService.tr('mayAccept'), textAlign: TextAlign.center, style: TextStyle(fontStyle: FontStyle.italic, color: Color(0xFF0B6B3A)))),
+        SizedBox(height: 20),
+        ElevatedButton.icon(onPressed: ()=>Navigator.push(context, MaterialPageRoute(builder: (_)=>AddMarhoomPage())), icon: Icon(Icons.add), label: Text(LangService.tr('addMarhoom')), style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0B6B3A), foregroundColor: Colors.white, minimumSize: Size(double.infinity, 52))),
+        SizedBox(height: 10),
+        AdBanner(),
+      ]),
+    );
+  }
+}
+
+class AddMarhoomPage extends StatefulWidget {
+  @override
+  State<AddMarhoomPage> createState() => _AddMarhoomPageState();
+}
+class _AddMarhoomPageState extends State<AddMarhoomPage> {
+  String name='', rishta='Abu Jaan', wafat=''; String imgPath=''; final picker=ImagePicker();
+  final rishtaList=['Abu Jaan','Ammi Jaan','Bhai Jaan','Behen','Beta','Beti','Wife','Chacha','Chachi','Dada','Dadi'];
+  Future<void> pickImage() async {
+    var x=await picker.pickImage(source: ImageSource.gallery);
+    if(x!=null){
+      var dir=await getApplicationDocumentsDirectory();
+      var newPath='${dir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await File(x.path).copy(newPath);
+      setState(()=>imgPath=newPath);
+    }
+  }
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(
+      appBar: AppBar(title: Text(LangService.tr('addMarhoom')), backgroundColor: Color(0xFF0B6B3A), foregroundColor: Colors.white),
+      body: ListView(padding: EdgeInsets.all(16), children: [
+        Center(child: Stack(children: [
+          CircleAvatar(radius: 60, backgroundImage: imgPath.isNotEmpty?FileImage(File(imgPath)):null, child: imgPath.isEmpty?Icon(Icons.person, size: 60):null),
+          Positioned(bottom: 0, right: 0, child: InkWell(onTap: pickImage, child: CircleAvatar(backgroundColor: Color(0xFF0B6B3A), radius: 18, child: Icon(Icons.add, color: Colors.white)))),
+        ])),
+        SizedBox(height: 20),
+        TextField(decoration: InputDecoration(labelText: LangService.tr('marhoomName'), prefixIcon: Icon(Icons.person), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))), onChanged: (v)=>name=v),
+        SizedBox(height: 12),
+        DropdownButtonFormField(value: rishta, items: rishtaList.map((e)=>DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: (v)=>setState(()=>rishta=v!), decoration: InputDecoration(labelText: LangService.tr('rishta'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), prefixIcon: Icon(Icons.people))),
+        SizedBox(height: 12),
+        TextField(decoration: InputDecoration(labelText: LangService.tr('wafat'), prefixIcon: Icon(Icons.calendar_today), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))), onChanged: (v)=>wafat=v, keyboardType: TextInputType.number),
+        SizedBox(height: 20),
+        ElevatedButton(onPressed: () async { if(name.isNotEmpty){ Storage.family.add(Marhoom(name: name, rishta: rishta, wafat: wafat, imagePath: imgPath)); if(!Storage.selectedMembers.contains(name)) Storage.selectedMembers.add(name); await Storage.saveFamily(); Navigator.pop(context); } }, style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0B6B3A), minimumSize: Size(double.infinity, 52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Text(LangService.tr('save'), style: TextStyle(color: Colors.white, fontSize: 18))),
+        SizedBox(height: 20),
+        AdBanner(),
+      ]),
+    );
+  }
+}
+
+class FamilyTreePage extends StatefulWidget {
+  @override
+  State<FamilyTreePage> createState() => _FamilyTreePageState();
+}
+class _FamilyTreePageState extends State<FamilyTreePage> {
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(
+      appBar: AppBar(title: Text(LangService.tr('familyTree')), backgroundColor: Color(0xFF0B6B3A), foregroundColor: Colors.white),
+      body: Column(children: [
+        Expanded(child: SingleChildScrollView(child: Column(children: [
+          SizedBox(height: 20),
+          Wrap(spacing: 16, runSpacing: 16, alignment: WrapAlignment.center, children: Storage.family.map((p)=>Column(children: [
+            CircleAvatar(radius: 35, backgroundImage: p.imagePath.isNotEmpty?FileImage(File(p.imagePath)):null, child: p.imagePath.isEmpty?Icon(Icons.person):null),
+            SizedBox(height: 6),
+            Text(p.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ])).toList()),
+          SizedBox(height: 20),
+          CustomPaint(size: Size(200, 80), painter: TreePainter()),
+                    Column(children: [CircleAvatar(radius: 30, child: Icon(Icons.person)), SizedBox(height: 4), Text(LangService.tr('you'), style: TextStyle(fontWeight: FontWeight.bold))]),
+          SizedBox(height: 20),
+          Padding(padding: EdgeInsets.all(16), child: Text(LangService.tr('mayForgive'), textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF0B6B3A), fontStyle: FontStyle.italic))),
+        ]))),
+        AdBanner(),
+      ]),
+    );
+  }
+}
+class TreePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size){
+    var paint=Paint()..color=Color(0xFF0B6B3A)..strokeWidth=3..style=PaintingStyle.stroke;
+    canvas.drawLine(Offset(size.width/2, 0), Offset(size.width/2, 40), paint);
+    canvas.drawLine(Offset(size.width*0.2, 0), Offset(size.width/2, 40), paint);
+    canvas.drawLine(Offset(size.width*0.8, 0), Offset(size.width/2, 40), paint);
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate)=>false;
+}
+
+class SawabCounterPage extends StatefulWidget {
+  @override
+  State<SawabCounterPage> createState() => _SawabCounterPageState();
+}
+class _SawabCounterPageState extends State<SawabCounterPage> {
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(
+      appBar: AppBar(title: Text(LangService.tr('sawabCounter')), backgroundColor: Color(0xFF0B6B3A), foregroundColor: Colors.white),
+      body: ListView(padding: EdgeInsets.all(16), children: [
+        Text(LangService.tr('youRecite'), style: TextStyle(color: Color(0xFF0B6B3A), fontWeight: FontWeight.bold, fontSize: 16)),
+        SizedBox(height: 12),
+        _card(LangService.tr('fatiha'), Icons.menu_book, Storage.counts['fatiha']!, 'fatiha'),
+        _card(LangService.tr('ikhlas'), Icons.mosque, Storage.counts['ikhlas']!, 'ikhlas'),
+        _card(LangService.tr('durood'), Icons.circle, Storage.counts['durood']!, 'durood'),
+        SizedBox(height: 20),
+        Text(LangService.tr('everyRecite'), textAlign: TextAlign.center, style: TextStyle(fontStyle: FontStyle.italic, color: Color(0xFF0B6B3A))),
+        SizedBox(height: 10),
+        AdBanner(),
+      ]),
+    );
+  }
+  Widget _card(String title, IconData icon, int count, String key){
+    return Card(margin: EdgeInsets.only(bottom: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), child: ListTile(leading: Icon(icon, color: Color(0xFF0B6B3A), size: 34), title: Text(title), subtitle: Text('$count', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)), trailing: ElevatedButton(onPressed: () async { setState(()=>Storage.counts[key]=count+1); await Storage.saveCounts(); }, style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0B6B3A)), child: Text('+1', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))));
+  }
+}
+
+class SettingsPage extends StatefulWidget {
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+class _SettingsPageState extends State<SettingsPage> {
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(
+      appBar: AppBar(title: Text(LangService.tr('settings')), backgroundColor: Color(0xFF0B6B3A), foregroundColor: Colors.white),
+      body: ListView(padding: EdgeInsets.all(16), children: [
+        Card(child: ListTile(leading: Icon(Icons.notifications, color: Color(0xFF0B6B3A)), title: Text(LangService.tr('notifSet'), style: TextStyle(fontWeight: FontWeight.bold)), subtitle: Text('${LangService.tr('dailyTime')}: ${Storage.reminderTime}'), trailing: Icon(Icons.arrow_forward_ios, size: 16), onTap: ()=>_pickTime())),
+        Card(child: ListTile(leading: Icon(Icons.people, color: Color(0xFF0B6B3A)), title: Text(LangService.tr('chooseMembers')), subtitle: Text(Storage.selectedMembers.join(', ')), onTap: ()=>_pickMembers())),
+        Card(child: ListTile(leading: Icon(Icons.language, color: Color(0xFF0B6B3A)), title: Text(LangService.tr('lang')), subtitle: Text(LangService.current), trailing: Icon(Icons.arrow_forward_ios, size: 16), onTap: ()=>Navigator.push(context, MaterialPageRoute(builder: (_)=>const LanguagePage())))),
+        Card(child: SwitchListTile(title: Text(LangService.tr('sound')), secondary: Icon(Icons.volume_up, color: Color(0xFF0B6B3A)), value: Storage.soundOn, activeColor: Color(0xFF0B6B3A), onChanged: (v) async { setState(()=>Storage.soundOn=v); await Storage.saveSettings(); })),
+        SizedBox(height: 20),
+        AdBanner(),
+        SizedBox(height: 10),
+        Center(child: Text('Esaale Sawab v1.0\nMade for Sadaqah-e-Jariya', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
+      ]),
+    );
+  }
+  Future<void> _pickTime() async {
+    var t=await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    if(t!=null){ setState(()=>Storage.reminderTime=t.format(context)); await Storage.saveSettings(); }
+  }
+  Future<void> _pickMembers() async {
+    List<String> temp=List.from(Storage.selectedMembers);
+    await showDialog(context: context, builder: (ctx)=>AlertDialog(title: Text(LangService.tr('chooseMembers')), content: SingleChildScrollView(child: Column(children: Storage.family.map((m)=>CheckboxListTile(title: Text(m.name), value: temp.contains(m.name), onChanged: (v){ setState((){ if(v!) temp.add(m.name); else temp.remove(m.name); }); Navigator.pop(ctx); _pickMembers(); })).toList())), actions: [TextButton(onPressed: () async { Storage.selectedMembers=temp; await Storage.saveSettings(); Navigator.pop(context); setState((){}); }, child: Text('OK'))]));
+  }
 }
